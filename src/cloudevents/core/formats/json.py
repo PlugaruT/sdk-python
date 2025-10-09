@@ -102,3 +102,70 @@ class JSONFormat(Format):
                     event_dict["data"] = str(event_data)
 
         return dumps(event_dict, cls=_JSONEncoderWithDatetime).encode("utf-8")
+
+    def get_content_type(self) -> str:
+        """
+        Get the content-type string for structured mode serialization.
+
+        :return: The content-type string for JSON format.
+        """
+        return self.CONTENT_TYPE
+
+    def write_data(
+        self, data: Optional[Union[dict, str, bytes]], datacontenttype: Optional[str]
+    ) -> bytes:
+        """
+        Serialize event data payload according to its content type.
+
+        This method handles data serialization for binary mode, where only
+        the data portion (not the full event) needs to be serialized.
+
+        :param data: The data payload to serialize.
+        :param datacontenttype: The content type of the data.
+        :return: The serialized data as bytes.
+        """
+        if data is None:
+            return b""
+        elif isinstance(data, bytes):
+            return data
+        elif isinstance(data, str):
+            return data.encode("utf-8")
+        else:
+            # For dict or other structured data types
+            # Check if the content type is JSON-like
+            if datacontenttype and re.match(
+                JSONFormat.JSON_CONTENT_TYPE_PATTERN, datacontenttype
+            ):
+                return dumps(data).encode("utf-8")
+            else:
+                # Fallback to string conversion for non-JSON content types
+                return str(data).encode("utf-8")
+
+    def read_data(
+        self, data: bytes, datacontenttype: Optional[str]
+    ) -> Optional[Union[dict, str, bytes]]:
+        """
+        Deserialize raw data bytes according to content type.
+
+        This method handles data deserialization for binary mode, parsing
+        the data bytes based on the datacontenttype attribute.
+
+        :param data: The raw data bytes to deserialize.
+        :param datacontenttype: The content type of the data.
+        :return: The deserialized data (dict, str, or bytes).
+        """
+        if not data:
+            return None
+
+        content_type = datacontenttype or ""
+
+        # Handle text content types
+        if content_type.startswith("text/"):
+            return data.decode("utf-8")
+
+        # Handle JSON content types
+        if re.match(JSONFormat.JSON_CONTENT_TYPE_PATTERN, content_type):
+            return loads(data.decode("utf-8"))
+
+        # For other content types, return raw bytes
+        return data

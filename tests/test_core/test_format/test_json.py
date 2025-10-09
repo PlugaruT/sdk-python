@@ -323,3 +323,142 @@ def test_read_cloud_event_from_string_input() -> None:
 
     assert result.get_id() == "123"
     assert result.get_source() == "source"
+
+
+def test_get_content_type() -> None:
+    formatter = JSONFormat()
+    assert formatter.get_content_type() == "application/cloudevents+json"
+
+
+def test_write_data_with_none() -> None:
+    formatter = JSONFormat()
+    result = formatter.write_data(None, "application/json")
+    assert result == b""
+
+
+def test_write_data_with_bytes() -> None:
+    formatter = JSONFormat()
+    result = formatter.write_data(b"\x00\x01\x02\x03", "application/octet-stream")
+    assert result == b"\x00\x01\x02\x03"
+
+
+def test_write_data_with_string() -> None:
+    formatter = JSONFormat()
+    result = formatter.write_data("Hello World", "text/plain")
+    assert result == b"Hello World"
+
+
+def test_write_data_with_dict_and_json_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.write_data({"key": "value"}, "application/json")
+    assert result == b'{"key": "value"}'
+
+
+def test_write_data_with_dict_and_custom_json_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.write_data({"key": "value"}, "application/vnd.api+json")
+    assert result == b'{"key": "value"}'
+
+
+def test_write_data_with_dict_and_non_json_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.write_data({"key": "value"}, "text/plain")
+    # Should fallback to string conversion
+    assert result == b"{'key': 'value'}"
+
+
+def test_write_data_with_dict_and_no_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.write_data({"key": "value"}, None)
+    # Should fallback to string conversion when content type is None
+    assert result == b"{'key': 'value'}"
+
+
+def test_read_data_with_empty_bytes() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(b"", "application/json")
+    assert result is None
+
+
+def test_read_data_with_text_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(b"Hello World", "text/plain")
+    assert result == "Hello World"
+
+
+def test_read_data_with_json_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(b'{"key": "value"}', "application/json")
+    assert result == {"key": "value"}
+
+
+def test_read_data_with_custom_json_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(
+        b'{"key": "value"}', "application/vnd.api+json"
+    )
+    assert result == {"key": "value"}
+
+
+def test_read_data_with_json_charset() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(
+        b'{"key": "value"}', "application/json; charset=utf-8"
+    )
+    assert result == {"key": "value"}
+
+
+def test_read_data_with_bytes_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(b"\x00\x01\x02\x03", "application/octet-stream")
+    assert result == b"\x00\x01\x02\x03"
+
+
+def test_read_data_with_no_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(b"\x00\x01\x02\x03", None)
+    # Should return raw bytes when content type is None
+    assert result == b"\x00\x01\x02\x03"
+
+
+def test_read_data_with_xml_content_type() -> None:
+    formatter = JSONFormat()
+    result = formatter.read_data(b"<xml>data</xml>", "application/xml")
+    # Non-JSON, non-text content types return raw bytes
+    assert result == b"<xml>data</xml>"
+
+
+def test_read_data_write_data_roundtrip_json() -> None:
+    """Test that write_data and read_data are inverse operations for JSON."""
+    formatter = JSONFormat()
+    original_data = {"key": "value", "nested": {"foo": "bar"}}
+
+    # Write then read
+    serialized = formatter.write_data(original_data, "application/json")
+    deserialized = formatter.read_data(serialized, "application/json")
+
+    assert deserialized == original_data
+
+
+def test_read_data_write_data_roundtrip_text() -> None:
+    """Test that write_data and read_data are inverse operations for text."""
+    formatter = JSONFormat()
+    original_data = "Hello World with unicode: 世界"
+
+    # Write then read
+    serialized = formatter.write_data(original_data, "text/plain")
+    deserialized = formatter.read_data(serialized, "text/plain")
+
+    assert deserialized == original_data
+
+
+def test_read_data_write_data_roundtrip_bytes() -> None:
+    """Test that write_data and read_data are inverse operations for bytes."""
+    formatter = JSONFormat()
+    original_data = b"\x00\x01\x02\x03\xff\xfe"
+
+    # Write then read
+    serialized = formatter.write_data(original_data, "application/octet-stream")
+    deserialized = formatter.read_data(serialized, "application/octet-stream")
+
+    assert deserialized == original_data

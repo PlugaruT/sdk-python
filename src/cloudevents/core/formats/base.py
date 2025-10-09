@@ -28,3 +28,42 @@ class Format(Protocol):
     ) -> BaseCloudEvent: ...
 
     def write(self, event: BaseCloudEvent) -> bytes: ...
+
+    def get_content_type(self) -> str:
+        """
+        Get the content-type string for structured mode serialization.
+
+        :return: The content-type string (e.g., "application/cloudevents+json").
+        """
+        ...
+
+    def write_data(
+        self, data: Optional[Union[dict, str, bytes]], datacontenttype: Optional[str]
+    ) -> bytes:
+        """
+        Serialize event data payload according to its content type.
+
+        This method is used by bindings in binary mode to serialize just the
+        data portion of a CloudEvent, respecting the datacontenttype attribute.
+
+        :param data: The data payload to serialize.
+        :param datacontenttype: The content type of the data.
+        :return: The serialized data as bytes.
+        """
+        ...
+
+    def read_data(
+        self, data: bytes, datacontenttype: Optional[str]
+    ) -> Optional[Union[dict, str, bytes]]:
+        """
+        Deserialize raw data bytes according to content type.
+
+        This method is used by bindings in binary mode to deserialize the
+        data portion of a CloudEvent based on the datacontenttype attribute.
+        It is the inverse operation of write_data().
+
+        :param data: The raw data bytes to deserialize.
+        :param datacontenttype: The content type of the data.
+        :return: The deserialized data (dict, str, or bytes).
+        """
+        ...
